@@ -21,6 +21,14 @@ Host *HostManager::FindHostByAddr(int addr) {
 }
 
 
+void HostManager::HostIsLive(int id) {
+
+    Host * h = FindHostById(id);
+    if (h != nullptr) {
+        h->SetLeader();
+    }
+}
+
 void HostManager::InitAllNet() {
     if (!hosts.empty()) {
         for (auto &h : hosts) {

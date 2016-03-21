@@ -20,6 +20,7 @@ public:
     void InitAllNet();
     int CheckLive();
     int GetLiveNum();
+    void HostIsLive(int id);
     int GetGroupSize() const { return hosts.size(); }
     int Boardcast(std::string msg);
     Host* FindHostByAddr(int addr);

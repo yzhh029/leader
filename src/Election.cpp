@@ -28,7 +28,8 @@ Election::Election(std::vector<Host> hlist, string p, int _self_id)
     }
     cout << host_group.GetGroupSize() << endl;
 
-    recv_msgs = make_shared<MessageQueue>();
+    normal_msgs = make_shared<MessageQueue>();
+    vote_message = make_shared<MessageQueue>();
 }
 
 void Election::InitNet() {
@@ -120,11 +121,38 @@ void RecvLoop(Election* ele) {
         Message msg = ele->GetMessage();
 
         if (msg.srcHost) {
-            ele->recv_msgs->push(msg);
+            if (msg.msg.find("HEARTBEAT") != string::npos) {
+                msg.srcHost->SendMessage(Message(ele->self_id, ele->view_number, "LIVE"));
+            } else if (msg.msg.find("LIVE") != string::npos) {
+                ele->host_group.HostIsLive(msg.cli_id);
+            } else if ( msg.msg.find("VOTEREQ") != string::npos) {
+                ;
+            } else if (msg.msg.find("VOTERESP") != string::npos) {
+
+            } else {
+                ele->normal_msgs->push(msg);
+            }
             //msg.srcHost->SendMessage(msg.msg + " ACK");
         }
     }
     cout << "recv end" << endl;
+}
+
+
+bool Election::Propose(std::string value) {
+
+    host_group.Boardcast();
+}
+
+
+void ProposeTh(Election* ele) {
+    cout << "propose start" << endl;
+
+    string value;
+    while ( cin >> value ) {
+        ele->host_group.Boardcast(to_string(ele->self_id) + " " + to_string(ele->view_number) + " " + value );
+
+    }
 }
 
 
@@ -136,7 +164,7 @@ void Election::run() {
     thread recv_thread(RecvLoop, this);
     Message msg;
 
-    for (;;) {
+    while ()
         if (recv_msgs->wait_and_pop(msg, 1000))
             cout << msg.msg << " from " << msg.srcHost->GetHostName() << endl;
         else

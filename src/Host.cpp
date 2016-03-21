@@ -65,6 +65,12 @@ void Host::SendMessage(std::string msg) {
     sendto(sock, msg.c_str(), msg.size(), 0, (struct sockaddr *)&addr, addrlen);
 }
 
+
+void Host::SendMessage(Message msg) {
+    SendMessage(msg.msg);
+}
+
+
 bool Host::isHost(const int address) {
     cout << hostname << "self addr " << addr.sin_addr.s_addr << " looking for" << address << endl;
 

@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include "Message.h"
 //#include <>
 
 enum class HostStatus {
@@ -24,11 +25,14 @@ public:
 
     virtual ~Host();
 
+    void SetLive() {status = HostStatus::kNormal; }
+    void SetLeader() {status = HostStatus::kLeader; }
 
     std::string GetHostName() const { return hostname; }
     int GetId() const { return id; }
 
     void SendMessage(std::string msg);
+    void SendMessage(Message msg);
 
     bool isHost(const int address);
     void InitNet();

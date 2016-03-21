@@ -26,6 +26,7 @@ public:
     ~Election();
 
     bool validateLeader(int timeout);
+    bool Propose(std::string value);
     bool elect();
     //* GetLeader() const { return leader; }
     void InitNet();
@@ -34,6 +35,7 @@ public:
     void run();
 
     friend void RecvLoop(Election* ele);
+    friend void ProposeTh(Election* ele);
 private:
 
     int view_number;
@@ -47,7 +49,8 @@ private:
 
     std::atomic_bool running;
 
-    std::shared_ptr<MessageQueue> recv_msgs;
+    std::shared_ptr<MessageQueue> normal_msgs;
+    std::shared_ptr<MessageQueue> vote_message;
 
 };
 
