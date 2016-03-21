@@ -44,10 +44,15 @@ std::vector<Host> Options::GetHosts() {
     string name(selfname);
 
     while (getline(hfile, h)) {
+        if (h.empty())
+            break;
         if (h != selfname)
             hosts.emplace_back(h, id++, GetPortStr());
-        else
-            cout << "skip self host" << name << endl;
+        else {
+            selfid = id++;
+            cout << "self id" << name << endl;
+        }
+
     }
 
     return hosts;

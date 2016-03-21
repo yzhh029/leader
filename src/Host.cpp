@@ -53,20 +53,22 @@ void Host::InitNet()  {
         exit(1);
     }
 
-    addr = *(p->ai_addr);
+    addr = *(struct sockaddr_in *)(p->ai_addr);
     addrlen = p->ai_addrlen;
-    cout << "initialized net for host " << hostname << endl;
+    cout << "initialized net for host " << hostname << " addr " << addr.sin_addr.s_addr << endl;
+
     freeaddrinfo(servinfo);
 }
 
 
 void Host::SendMessage(std::string msg) {
-    sendto(sock, msg.c_str(), msg.size(), 0, &addr, addrlen);
+    sendto(sock, msg.c_str(), msg.size(), 0, (struct sockaddr *)&addr, addrlen);
 }
 
-bool Host::isHost(const sockaddr_in &remote) {
+bool Host::isHost(const int address) {
+    cout << hostname << "self addr " << addr.sin_addr.s_addr << " looking for" << address << endl;
 
-    return remote.sin_addr.s_addr == ((struct sockaddr_in *)&addr)->sin_addr.s_addr;
+    return address == addr.sin_addr.s_addr;
 
 }
 

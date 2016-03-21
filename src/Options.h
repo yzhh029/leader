@@ -18,12 +18,14 @@ public:
     std::string GetPortStr() const { return std::to_string(port); }
     std::string GetHostFile() const {return host_file; }
     int GetMaxCrash() const { return max_crash; }
+    int GetSelfId() const {return selfid;}
 
     std::vector<Host> GetHosts();
 private:
     int port;
     std::string host_file;
     int max_crash;
+    int selfid;
 };
 
 

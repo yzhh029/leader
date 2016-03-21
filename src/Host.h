@@ -30,14 +30,14 @@ public:
 
     void SendMessage(std::string msg);
 
-    bool isHost(const sockaddr_in &remote);
+    bool isHost(const int address);
     void InitNet();
 private:
 
     //void InitNet();
 
     int id;
-    struct sockaddr addr;
+    struct sockaddr_in addr;
     socklen_t  addrlen;
     HostStatus status;
     std::string port;
