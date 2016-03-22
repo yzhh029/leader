@@ -19,6 +19,7 @@ public:
     std::string GetHostFile() const {return host_file; }
     int GetMaxCrash() const { return max_crash; }
     int GetSelfId() const {return selfid;}
+    std::string GetSelfName() const { return selfname; }
 
     std::vector<Host> GetHosts();
 private:
@@ -26,6 +27,7 @@ private:
     std::string host_file;
     int max_crash;
     int selfid;
+    std::string selfname;
 };
 
 

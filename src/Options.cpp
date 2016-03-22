@@ -39,9 +39,9 @@ std::vector<Host> Options::GetHosts() {
     string h;
     int id = 1;
 
-    char selfname[1024];
-    gethostname(selfname, 1024);
-    string name(selfname);
+    char _selfname[1024];
+    gethostname(_selfname, 1024);
+    selfname = string(_selfname);
 
     while (getline(hfile, h)) {
         if (h.empty())
@@ -50,7 +50,7 @@ std::vector<Host> Options::GetHosts() {
             hosts.emplace_back(h, id++, GetPortStr());
         else {
             selfid = id++;
-            cout << "self id " << selfid << " " << name << endl;
+            cout << "self id " << selfid << " " << selfname << endl;
         }
 
     }

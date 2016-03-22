@@ -13,12 +13,14 @@
 #include <sys/time.h>
 #include <arpa/inet.h>
 #include <map>
+#include "utils.h"
 
 
 using namespace std;
 
-Election::Election(std::vector<Host> hlist, string p, int _self_id, int quorum)
-        : host_group(HostManager(hlist)), leader_id(-1), self_id(_self_id), port(p), mini_qourum(quorum), view_number(_self_id) {
+Election::Election(std::vector<Host> hlist, string p, int _self_id, string _self_name, int quorum)
+        : host_group(HostManager(hlist)), leader_id(-1), self_id(_self_id), port(p),
+          mini_qourum(quorum), view_number(_self_id), self_name(_self_name) {
 
     char hostname[64];
     if (gethostname(hostname, 64) == -1) {
@@ -29,6 +31,8 @@ Election::Election(std::vector<Host> hlist, string p, int _self_id, int quorum)
      cout << hostname << endl;
     }
     cout << host_group.GetGroupSize() << endl;
+
+    last_live = chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
 
     normal_msgs = make_shared<MessageQueue>();
     vote_message = make_shared<MessageQueue>();
@@ -94,7 +98,7 @@ Message Election::GetMessage() {
     }
 
     Message msg(string(buf, size));
-    cout << " new recv " << msg.cli_id << " " << msg.view_num << " " << msg.msg << " " << msg.value << endl;
+    //cout << " new recv " << msg.cli_id << " " << msg.view_num << " " << msg.msg << " " << msg.value << endl;
     int cli_addr = client_addr.sin_addr.s_addr;
 
     msg.srcHost = host_group.FindHostByAddr(cli_addr);
@@ -124,8 +128,15 @@ void RecvLoop(Election* ele) {
             // receive heartbeat req, reply LIVE
             if (msg.msg.find("HEARTBEAT") != string::npos) {
                 //msg.srcHost->SendMessage(Message(ele->self_id, msg.view_num, "LIVE"));
-                msg.srcHost->SendMessage(to_string(ele->self_id) + " " + to_string(msg.view_num) + " LIVE 0" );
+                if (ele->self_id == ele->leader_id) {
+                    Print(ele->self_name, "recv heartbeat from " + msg.srcHost->GetHostName());
+                    msg.srcHost->SendMessage(to_string(ele->self_id) + " " + to_string(msg.view_num) + " LIVE 0");
+                }
+                else
+                    msg.srcHost->SendMessage(to_string(ele->self_id) + " " + to_string(msg.view_num) + " WRONGLEADER 0" );
             } else if (msg.msg.find("LIVE") != string::npos) {
+                ele->last_live = chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+                Print(ele->self_name, " leader " + msg.srcHost->GetHostName() + " is live");
                 ele->host_group.HostIsLive(msg.cli_id);
             } else if (msg.msg.find("VOTEREQ") != string::npos) {
                 //msg.srcHost->SendMessage(Message(ele->self_id, msg.view_num, "VOTERESP", to_string(ele->self_id)));
@@ -133,6 +144,8 @@ void RecvLoop(Election* ele) {
                 msg.srcHost->SendMessage(to_string(ele->self_id) + " " + to_string(msg.view_num) + " VOTERESP " + to_string(ele->self_id) );
             } else if ( msg.msg.find("VOTERESP") != string::npos && msg.view_num == ele->view_number) {
                 ele->vote_message->push(msg);
+            } else if (msg.msg.find("WRONGLEADER") != string::npos) {
+                ele->leader_id = -1;
             } else {
                 cout << "recv wrong message " << msg.msg << endl;
                 ele->normal_msgs->push(msg);
@@ -162,13 +175,16 @@ void ProposeTh(Election* ele) {
 
 
 int Election::elect() {
+
+    Print(self_name, "start new election");
+
     host_group.Boardcast(Message(self_id, ++view_number, "VOTEREQ"));
     map<int, int> vote_count;
     int collect = 1, min_id = self_id;
 
     cout << "start elect view:" << view_number << " wait for " << host_group.GetGroupSize() << " votes" << endl;
 
-    const auto TIMEOUT = chrono::seconds(5);
+    const auto TIMEOUT = chrono::seconds(2);
     auto start = chrono::system_clock::now();
 
     while (collect <= host_group.GetGroupSize()) {
@@ -189,12 +205,15 @@ int Election::elect() {
             break;
         }
     }
+    cout << "stop voting recv " << collect << " votes" << endl;
     if (collect == host_group.GetGroupSize() + 1) {
-        cout << "new leader " << min_id << endl;
+        Print(self_name, "new leader " + to_string(min_id));
+        //cout << Now() <<  "new leader " << min_id << endl;
         return min_id;
     }
     else {
-        cout << collect << "!=" << host_group.GetGroupSize() + 1 << " no enough votes , elect fail" << endl;
+        Print(self_name, "election failed " + to_string(collect) + "!=" + to_string(host_group.GetGroupSize() + 1));
+        //cout << collect << "!=" << host_group.GetGroupSize() + 1 << " no enough votes , elect fail" << endl;
         return -1;
     }
 
@@ -210,19 +229,31 @@ void Election::run() {
 
     while (true) {
 
-        if (leader_id == -1 || ( leader_id != self_id && host_group.FindHostById(leader_id)->GetStatus() != HostStatus::kLeader)) {
+        if (leader_id == -1 ||
+                ( leader_id != self_id &&
+                          ( host_group.FindHostById(leader_id)->GetStatus() != HostStatus::kLeader
+                            || chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count() - last_live > 3
+                          ) ) ){
 
             if (leader_id == -1)
                 cout << "no leader" << endl;
             else if ( leader_id != self_id && host_group.FindHostById(leader_id)->GetStatus() != HostStatus::kLeader)
                 cout << leader_id << " is not leader " << host_group.FindHostById(leader_id)->GetStatusStr() << endl;
+            else if (leader_id != self_id && chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count() - last_live > 3)
+                cout << "heart beat timeout" << endl;
 
             // start new election
             leader_id = elect();
             if (leader_id != -1) {
                 if (leader_id != self_id) {
                     host_group.FindHostById(leader_id)->SetLeader();
+                    last_live = chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
                 }
+            }
+        } else {
+            if (leader_id != self_id) {
+                Host *leader = host_group.FindHostById(leader_id);
+                leader->SendMessage(to_string(self_id) + " " + to_string(view_number) + " HEARTBEAT 0");
             }
         }
         if (normal_msgs->wait_and_pop(msg, 1000))

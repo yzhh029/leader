@@ -21,7 +21,7 @@ class MessageQueue;
 
 class Election {
 public:
-    Election(std::vector<Host> hlist, std::string p, int _self_id, int quorum) ;
+    Election(std::vector<Host> hlist, std::string p, int _self_id, std::string _self_name, int quorum) ;
 
     ~Election();
 
@@ -41,9 +41,10 @@ private:
     int view_number;
     int mini_qourum;
     HostManager host_group;
-    int leader_id;
+    std::atomic_int leader_id;
+    std::atomic_int last_live;
     int self_id;
-
+    std::string self_name;
     int sock;
     std::string port;
 
