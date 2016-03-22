@@ -50,7 +50,7 @@ std::vector<Host> Options::GetHosts() {
             hosts.emplace_back(h, id++, GetPortStr());
         else {
             selfid = id++;
-            cout << "self id" << name << endl;
+            cout << "self id " << selfid << " " << name << endl;
         }
 
     }

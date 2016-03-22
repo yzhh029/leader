@@ -18,7 +18,7 @@
 using namespace std;
 
 Election::Election(std::vector<Host> hlist, string p, int _self_id, int quorum)
-        : host_group(HostManager(hlist)), leader_id(-1), self_id(_self_id), port(p), mini_qourum(quorum) {
+        : host_group(HostManager(hlist)), leader_id(-1), self_id(_self_id), port(p), mini_qourum(quorum), view_number(_self_id) {
 
     char hostname[64];
     if (gethostname(hostname, 64) == -1) {
@@ -94,7 +94,7 @@ Message Election::GetMessage() {
     }
 
     Message msg(string(buf, size));
-    cout << " " << msg.cli_id << " " << msg.view_num << " " << msg.msg << endl;
+    cout << " new recv " << msg.cli_id << " " << msg.view_num << " " << msg.msg << " " << msg.value << endl;
     int cli_addr = client_addr.sin_addr.s_addr;
 
     msg.srcHost = host_group.FindHostByAddr(cli_addr);
@@ -102,10 +102,8 @@ Message Election::GetMessage() {
         msg.srcHost = host_group.FindHostById(msg.cli_id);
     }
 
-    if (msg.srcHost)
-    //cout << "recv" << msg.msg << endl;
-        cout << "recv " << msg.msg << " from " << msg.srcHost->GetHostName() << endl;
-    else {
+    if (msg.srcHost == nullptr)
+    {
         cout << " no host found " << msg.msg << endl;
     }
     return msg;
@@ -125,17 +123,22 @@ void RecvLoop(Election* ele) {
         if (msg.srcHost) {
             // receive heartbeat req, reply LIVE
             if (msg.msg.find("HEARTBEAT") != string::npos) {
-                msg.srcHost->SendMessage(Message(ele->self_id, msg.view_num, "LIVE"));
+                //msg.srcHost->SendMessage(Message(ele->self_id, msg.view_num, "LIVE"));
+                msg.srcHost->SendMessage(to_string(ele->self_id) + " " + to_string(msg.view_num) + " LIVE 0" );
             } else if (msg.msg.find("LIVE") != string::npos) {
                 ele->host_group.HostIsLive(msg.cli_id);
-            } else if (msg.msg.find("VOTEREQ")) {
-                msg.srcHost->SendMessage(Message(ele->self_id, msg.view_num, "VOTERESP", to_string(ele->self_id)));
-            } else if ( msg.msg.find("VOTERESP") != string::npos) {
+            } else if (msg.msg.find("VOTEREQ") != string::npos) {
+                //msg.srcHost->SendMessage(Message(ele->self_id, msg.view_num, "VOTERESP", to_string(ele->self_id)));
+                //cout << "recv vote request from " << msg.srcHost->GetHostName() << ", vote to " << ele->self_id;
+                msg.srcHost->SendMessage(to_string(ele->self_id) + " " + to_string(msg.view_num) + " VOTERESP " + to_string(ele->self_id) );
+            } else if ( msg.msg.find("VOTERESP") != string::npos && msg.view_num == ele->view_number) {
                 ele->vote_message->push(msg);
             } else {
+                cout << "recv wrong message " << msg.msg << endl;
                 ele->normal_msgs->push(msg);
             }
             //msg.srcHost->SendMessage(msg.msg + " ACK");
+
         }
     }
     cout << "recv end" << endl;
@@ -161,30 +164,40 @@ void ProposeTh(Election* ele) {
 int Election::elect() {
     host_group.Boardcast(Message(self_id, ++view_number, "VOTEREQ"));
     map<int, int> vote_count;
-    int collect = 1, min_id = 9999;
+    int collect = 1, min_id = self_id;
 
-    const auto TIMEOUT = chrono::seconds(2);
+    cout << "start elect view:" << view_number << " wait for " << host_group.GetGroupSize() << " votes" << endl;
+
+    const auto TIMEOUT = chrono::seconds(5);
     auto start = chrono::system_clock::now();
 
     while (collect <= host_group.GetGroupSize()) {
 
         Message vote;
-        vote_message->wait_and_pop(vote, 1000);
-        if (vote.cli_id < min_id) {
-            min_id = vote.cli_id;
+
+        if (vote_message->wait_and_pop(vote, 1000) && vote.view_num == view_number) {
+            cout << "a vote from " << vote.srcHost->GetHostName() << " to host " << vote.value << endl;
+            if (vote.cli_id < min_id) {
+                cout << "new lower id "<< vote.cli_id << endl;
+                min_id = vote.cli_id;
+            }
+            ++collect;
         }
-        ++collect;
 
         auto now = chrono::system_clock::now();
-        if (now > start + TIMEOUT) {
-            if (collect >= mini_qourum)
-                return min_id;
-            else
-                return -1;
+        if (now > start + TIMEOUT ) {
+            break;
         }
     }
+    if (collect == host_group.GetGroupSize() + 1) {
+        cout << "new leader " << min_id << endl;
+        return min_id;
+    }
+    else {
+        cout << collect << "!=" << host_group.GetGroupSize() + 1 << " no enough votes , elect fail" << endl;
+        return -1;
+    }
 
-    return 0;
 }
 
 
@@ -197,14 +210,24 @@ void Election::run() {
 
     while (true) {
 
-        if (leader_id == -1 || host_group.FindHostById(leader_id)->GetStatus() != HostStatus::kLeader) {
+        if (leader_id == -1 || ( leader_id != self_id && host_group.FindHostById(leader_id)->GetStatus() != HostStatus::kLeader)) {
+
+            if (leader_id == -1)
+                cout << "no leader" << endl;
+            else if ( leader_id != self_id && host_group.FindHostById(leader_id)->GetStatus() != HostStatus::kLeader)
+                cout << leader_id << " is not leader " << host_group.FindHostById(leader_id)->GetStatusStr() << endl;
+
             // start new election
             leader_id = elect();
+            if (leader_id != -1) {
+                if (leader_id != self_id) {
+                    host_group.FindHostById(leader_id)->SetLeader();
+                }
+            }
         }
         if (normal_msgs->wait_and_pop(msg, 1000))
             cout << msg.msg << " from " << msg.srcHost->GetHostName() << endl;
-        else
-            cout << "." ;
+
     }
 
 

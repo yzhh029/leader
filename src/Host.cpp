@@ -72,7 +72,7 @@ void Host::SendMessage(Message msg) {
 
 
 bool Host::isHost(const int address) {
-    cout << hostname << "self addr " << addr.sin_addr.s_addr << " looking for" << address << endl;
+    //cout << hostname << "self addr " << addr.sin_addr.s_addr << " looking for" << address << endl;
 
     return address == addr.sin_addr.s_addr;
 

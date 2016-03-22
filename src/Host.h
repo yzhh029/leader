@@ -29,6 +29,17 @@ public:
     void SetLive() {status = HostStatus::kNormal; }
     void SetLeader() {status = HostStatus::kLeader; }
     HostStatus GetStatus() const { return status; }
+    std::string GetStatusStr() const {
+        if (status == HostStatus::kLeader) {
+            return std::string("leader");
+        } else if (status == HostStatus::kNormal) {
+            return std::string("normal");
+        } else if (status == HostStatus::kLost) {
+            return std::string("lost");
+        } else {
+            return std::string("unknown");
+        }
+    }
 
     std::string GetHostName() const { return hostname; }
     int GetId() const { return id; }
