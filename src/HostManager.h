@@ -23,6 +23,7 @@ public:
     void HostIsLive(int id);
     int GetGroupSize() const { return hosts.size(); }
     int Boardcast(std::string msg);
+    int Boardcast(Message msg);
     Host* FindHostByAddr(int addr);
     Host* FindHostById(int id);
 

@@ -18,6 +18,7 @@ enum class HostStatus {
     kLost
 };
 
+class Message;
 // a remote host
 class Host {
 public:
@@ -27,6 +28,7 @@ public:
 
     void SetLive() {status = HostStatus::kNormal; }
     void SetLeader() {status = HostStatus::kLeader; }
+    HostStatus GetStatus() const { return status; }
 
     std::string GetHostName() const { return hostname; }
     int GetId() const { return id; }

@@ -21,13 +21,13 @@ class MessageQueue;
 
 class Election {
 public:
-    Election(std::vector<Host> hlist, std::string p, int _self_id) ;
+    Election(std::vector<Host> hlist, std::string p, int _self_id, int quorum) ;
 
     ~Election();
 
     bool validateLeader(int timeout);
     bool Propose(std::string value);
-    bool elect();
+    int elect();
     //* GetLeader() const { return leader; }
     void InitNet();
     bool isRunning() const { return running; }
@@ -39,7 +39,7 @@ public:
 private:
 
     int view_number;
-
+    int mini_qourum;
     HostManager host_group;
     int leader_id;
     int self_id;

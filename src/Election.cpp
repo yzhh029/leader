@@ -9,14 +9,16 @@
 #include <iostream>
 #include <netdb.h>
 #include <thread>
+#include <chrono>
 #include <sys/time.h>
 #include <arpa/inet.h>
+#include <map>
 
 
 using namespace std;
 
-Election::Election(std::vector<Host> hlist, string p, int _self_id)
-        : host_group(HostManager(hlist)), leader_id(-1), self_id(_self_id), port(p) {
+Election::Election(std::vector<Host> hlist, string p, int _self_id, int quorum)
+        : host_group(HostManager(hlist)), leader_id(-1), self_id(_self_id), port(p), mini_qourum(quorum) {
 
     char hostname[64];
     if (gethostname(hostname, 64) == -1) {
@@ -121,14 +123,15 @@ void RecvLoop(Election* ele) {
         Message msg = ele->GetMessage();
 
         if (msg.srcHost) {
+            // receive heartbeat req, reply LIVE
             if (msg.msg.find("HEARTBEAT") != string::npos) {
-                msg.srcHost->SendMessage(Message(ele->self_id, ele->view_number, "LIVE"));
+                msg.srcHost->SendMessage(Message(ele->self_id, msg.view_num, "LIVE"));
             } else if (msg.msg.find("LIVE") != string::npos) {
                 ele->host_group.HostIsLive(msg.cli_id);
-            } else if ( msg.msg.find("VOTEREQ") != string::npos) {
-                ;
-            } else if (msg.msg.find("VOTERESP") != string::npos) {
-
+            } else if (msg.msg.find("VOTEREQ")) {
+                msg.srcHost->SendMessage(Message(ele->self_id, msg.view_num, "VOTERESP", to_string(ele->self_id)));
+            } else if ( msg.msg.find("VOTERESP") != string::npos) {
+                ele->vote_message->push(msg);
             } else {
                 ele->normal_msgs->push(msg);
             }
@@ -141,7 +144,7 @@ void RecvLoop(Election* ele) {
 
 bool Election::Propose(std::string value) {
 
-    host_group.Boardcast();
+    //host_group.Boardcast();
 }
 
 
@@ -151,10 +154,38 @@ void ProposeTh(Election* ele) {
     string value;
     while ( cin >> value ) {
         ele->host_group.Boardcast(to_string(ele->self_id) + " " + to_string(ele->view_number) + " " + value );
-
     }
 }
 
+
+int Election::elect() {
+    host_group.Boardcast(Message(self_id, ++view_number, "VOTEREQ"));
+    map<int, int> vote_count;
+    int collect = 1, min_id = 9999;
+
+    const auto TIMEOUT = chrono::seconds(2);
+    auto start = chrono::system_clock::now();
+
+    while (collect <= host_group.GetGroupSize()) {
+
+        Message vote;
+        vote_message->wait_and_pop(vote, 1000);
+        if (vote.cli_id < min_id) {
+            min_id = vote.cli_id;
+        }
+        ++collect;
+
+        auto now = chrono::system_clock::now();
+        if (now > start + TIMEOUT) {
+            if (collect >= mini_qourum)
+                return min_id;
+            else
+                return -1;
+        }
+    }
+
+    return 0;
+}
 
 
 void Election::run() {
@@ -164,8 +195,13 @@ void Election::run() {
     thread recv_thread(RecvLoop, this);
     Message msg;
 
-    while ()
-        if (recv_msgs->wait_and_pop(msg, 1000))
+    while (true) {
+
+        if (leader_id == -1 || host_group.FindHostById(leader_id)->GetStatus() != HostStatus::kLeader) {
+            // start new election
+            leader_id = elect();
+        }
+        if (normal_msgs->wait_and_pop(msg, 1000))
             cout << msg.msg << " from " << msg.srcHost->GetHostName() << endl;
         else
             cout << "." ;

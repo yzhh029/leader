@@ -46,6 +46,14 @@ int HostManager::Boardcast(std::string msg) {
         cout << "send " << msg << " to " << h.GetHostName() << endl;
         h.SendMessage(msg);
     }
+    return 0;
+}
+
+
+int HostManager::Boardcast(Message msg) {
+
+    Boardcast(msg.msg);
+    return 0;
 }
 
 

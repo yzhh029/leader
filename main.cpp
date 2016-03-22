@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
         cout << h.GetId() << " " << h.GetHostName() << endl;
     }
 
-    Election ele(hostlist, opt.GetPortStr(), opt.GetSelfId());
+    Election ele(hostlist, opt.GetPortStr(), opt.GetSelfId(), hostlist.size() + 1 - opt.GetMaxCrash());
 
     for (auto &h : hostlist) {
         cout << h.GetId() << " " << h.GetHostName() << endl;
