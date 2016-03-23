@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
-
+#include <sstream>
 #include <fstream>
 
 using namespace std;
@@ -36,20 +36,24 @@ Options::Options(int argc, char **argv) {
 std::vector<Host> Options::GetHosts() {
     ifstream hfile(host_file);
     vector<Host> hosts;
-    string h;
-    int id = 1;
+    string line, h;
+    int id;
 
     char _selfname[1024];
     gethostname(_selfname, 1024);
     selfname = string(_selfname);
 
-    while (getline(hfile, h)) {
+    while (getline(hfile, line)) {
+
+        stringstream ss(line);
+        ss >> id >> h;
+
         if (h.empty())
             break;
         if (h != selfname)
-            hosts.emplace_back(h, id++, GetPortStr());
+            hosts.emplace_back(h, id, GetPortStr());
         else {
-            selfid = id++;
+            selfid = id;
             cout << "self id " << selfid << " " << selfname << endl;
         }
 

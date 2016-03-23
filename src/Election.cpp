@@ -18,6 +18,12 @@
 
 using namespace std;
 
+
+int Election::GetEpochSec() {
+    return chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+}
+
+
 Election::Election(std::vector<Host> hlist, string p, int _self_id, string _self_name, int quorum)
         : host_group(HostManager(hlist)), leader_id(-1), self_id(_self_id), port(p),
           mini_qourum(quorum), view_number(_self_id), self_name(_self_name) {
@@ -30,9 +36,8 @@ Election::Election(std::vector<Host> hlist, string p, int _self_id, string _self
     else {
      cout << hostname << endl;
     }
-    cout << host_group.GetGroupSize() << endl;
 
-    last_live = chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+    last_live = GetEpochSec();
 
     normal_msgs = make_shared<MessageQueue>();
     vote_message = make_shared<MessageQueue>();
@@ -135,7 +140,7 @@ void RecvLoop(Election* ele) {
                 else
                     msg.srcHost->SendMessage(to_string(ele->self_id) + " " + to_string(msg.view_num) + " WRONGLEADER 0" );
             } else if (msg.msg.find("LIVE") != string::npos) {
-                ele->last_live = chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+                ele->last_live = ele->GetEpochSec();
                 Print(ele->self_name, " leader " + msg.srcHost->GetHostName() + " is live");
                 ele->host_group.HostIsLive(msg.cli_id);
             } else if (msg.msg.find("VOTEREQ") != string::npos) {
@@ -229,17 +234,18 @@ void Election::run() {
 
     while (true) {
 
-        if (leader_id == -1 ||
-                ( leader_id != self_id &&
-                          ( host_group.FindHostById(leader_id)->GetStatus() != HostStatus::kLeader
-                            || chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count() - last_live > 3
+        if (leader_id == -1 ||  // if there is no leader
+                ( leader_id != self_id && // or leader is not this node
+                          ( host_group.FindHostById(leader_id)->GetStatus() != HostStatus::kLeader // and the leader status is not correct
+                            || GetEpochSec() - last_live > 3
+                                  // or leader is not live for 3 seconds
                           ) ) ){
 
             if (leader_id == -1)
                 cout << "no leader" << endl;
             else if ( leader_id != self_id && host_group.FindHostById(leader_id)->GetStatus() != HostStatus::kLeader)
                 cout << leader_id << " is not leader " << host_group.FindHostById(leader_id)->GetStatusStr() << endl;
-            else if (leader_id != self_id && chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count() - last_live > 3)
+            else if (leader_id != self_id && GetEpochSec() - last_live > 3)
                 cout << "heart beat timeout" << endl;
 
             // start new election
@@ -247,7 +253,7 @@ void Election::run() {
             if (leader_id != -1) {
                 if (leader_id != self_id) {
                     host_group.FindHostById(leader_id)->SetLeader();
-                    last_live = chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+                    last_live = GetEpochSec();
                 }
             }
         } else {

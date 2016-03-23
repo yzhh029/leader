@@ -37,14 +37,24 @@ public:
     friend void RecvLoop(Election* ele);
     friend void ProposeTh(Election* ele);
 private:
+    int GetEpochSec();
 
-    int view_number;
+    // election protocol
     int mini_qourum;
     HostManager host_group;
     std::atomic_int leader_id;
-    std::atomic_int last_live;
+    std::atomic_int last_live; // last heartbeat time
+    std::atomic_int min_proposal;
+    std::atomic_int my_proposal;
+
+    int livelock_wait;
+
+    // self information
     int self_id;
+    int view_number;
     std::string self_name;
+    
+    // network
     int sock;
     std::string port;
 
