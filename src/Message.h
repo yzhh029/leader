@@ -26,6 +26,11 @@ struct Message {
     Message(int dest_id, int _view_num, std::string send_msg, std::string _value) {
         msg = std::string(std::to_string(dest_id) + " " + std::to_string(_view_num) + " " + send_msg + " " + _value);
     }
+
+    int GetProposalNum() {
+        return cli_id * 100 + cli_id;
+    }
+
     std::string msg;
     Host* srcHost;
 

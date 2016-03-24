@@ -35,15 +35,18 @@ public:
     void run();
 
     friend void RecvLoop(Election* ele);
-    friend void ProposeTh(Election* ele);
+
 private:
     int GetEpochSec();
+    int NewProposalNum();
+    //int GetProposalNum(int cli_id, int view);
 
     // election protocol
     int mini_qourum;
     HostManager host_group;
     std::atomic_int leader_id;
     std::atomic_int last_live; // last heartbeat time
+    std::atomic_int accepted_proposal;
     std::atomic_int min_proposal;
     std::atomic_int my_proposal;
 
