@@ -19,7 +19,7 @@ bool MessageQueue::wait_and_pop(Message &msg, int timeout) {
     unique_lock<mutex> lock(mtx);
 
     if (cv.wait_for(lock, chrono::milliseconds(timeout), [this] {return !msgs.empty();}) ) {
-        msg = std::move(msgs.front());
+        msg = msgs.front();
         msgs.pop();
         return true;
     } else {

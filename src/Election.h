@@ -39,6 +39,7 @@ public:
 private:
     int GetEpochSec();
     int NewProposalNum();
+    void NextView(int);
     //int GetProposalNum(int cli_id, int view);
 
     // election protocol
@@ -50,10 +51,9 @@ private:
     std::atomic_int min_proposal;
     std::atomic_int my_proposal;
 
-    int livelock_wait;
-
     // self information
     int self_id;
+    int prop_number;
     int view_number;
     std::string self_name;
     
