@@ -25,10 +25,8 @@ public:
 
     ~Election();
 
-    bool validateLeader(int timeout);
-    bool Propose(std::string value);
     int elect();
-    //* GetLeader() const { return leader; }
+
     void InitNet();
     bool isRunning() const { return running; }
     Message GetMessage();
@@ -40,7 +38,6 @@ private:
     int GetEpochSec();
     int NewProposalNum();
     void NextView(int);
-    //int GetProposalNum(int cli_id, int view);
 
     // election protocol
     int mini_qourum;
@@ -63,7 +60,6 @@ private:
 
     std::atomic_bool running;
 
-    std::shared_ptr<MessageQueue> normal_msgs;
     std::shared_ptr<MessageQueue> vote_message;
 
 };

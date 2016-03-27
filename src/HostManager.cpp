@@ -35,7 +35,7 @@ void HostManager::InitAllNet() {
             h.InitNet();
         }
     } else {
-        cout << "no available hosts in hostmanager" << endl;
+        cout << "HOST error, no available hosts in hostmanager" << endl;
     }
 }
 
@@ -43,7 +43,7 @@ void HostManager::InitAllNet() {
 int HostManager::Boardcast(std::string msg) {
 
     for (auto &h : hosts) {
-        cout << "send " << msg << " to " << h.GetHostName() << endl;
+        //cout << "send " << msg << " to " << h.GetHostName() << endl;
         h.SendMessage(msg);
     }
     return 0;

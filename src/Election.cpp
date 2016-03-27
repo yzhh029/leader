@@ -44,13 +44,11 @@ Election::Election(std::vector<Host> hlist, string p, int _self_id, string _self
     }
 
     else {
-     cout << hostname << endl;
+        cout << hostname << endl;
     }
 
     last_live = GetEpochSec();
 
-
-    normal_msgs = make_shared<MessageQueue>();
     vote_message = make_shared<MessageQueue>();
 }
 
@@ -64,7 +62,7 @@ void Election::InitNet() {
         exit(1);
     }
 
-    int enable =1;
+    int enable = 1;
     if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof enable) < 0) {
         perror("resue sock addr failed");
         close(sock);
@@ -77,7 +75,7 @@ void Election::InitNet() {
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     serv_addr.sin_port = htons(static_cast<uint16_t>(stoi(port)));
 
-    int ret = bind(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+    int ret = bind(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
     if (ret == -1) {
         perror("bind error");
         close(sock);
@@ -93,7 +91,7 @@ void Election::InitNet() {
         exit(1);
     }
 
-    cout << "initialized for server " << port << endl;
+    //cout << "initialized for server " << port << endl;
 }
 
 Message Election::GetMessage() {
@@ -102,7 +100,7 @@ Message Election::GetMessage() {
     char buf[MAXBUFF];
     socklen_t addr_len;
 
-    int size = recvfrom(sock, buf, MAXBUFF-1, 0, (struct sockaddr *)&client_addr, &addr_len);
+    int size = recvfrom(sock, buf, MAXBUFF - 1, 0, (struct sockaddr *) &client_addr, &addr_len);
     if (size < 0) {
         if (errno == EWOULDBLOCK) {
             //cout << "no message yet " << endl;
@@ -122,8 +120,7 @@ Message Election::GetMessage() {
         msg.srcHost = host_group.FindHostById(msg.cli_id);
     }
 
-    if (msg.srcHost == nullptr)
-    {
+    if (msg.srcHost == nullptr) {
         cout << " no host found " << msg.msg << endl;
     }
     return msg;
@@ -141,13 +138,13 @@ void Election::NextView(int next_view) {
     last_live = 0;
     accepted_proposal = -1;
     view_number = next_view;
-    cout << "next view to " << view_number << endl;
+    //cout << "next view to " << view_number << endl;
 }
 
 
-void RecvLoop(Election* ele) {
+void RecvLoop(Election *ele) {
 
-    cout << "recv start" << endl;
+    //cout << "recv start" << endl;
     while (ele->isRunning()) {
         Message msg = ele->GetMessage();
 
@@ -156,7 +153,7 @@ void RecvLoop(Election* ele) {
             if (msg.msg.find("HEARTBEAT") != string::npos) {
                 //msg.srcHost->SendMessage(Message(ele->self_id, msg.pp_num, "LIVE"));
                 if (ele->self_id == ele->leader_id) {
-                    Print(ele->self_name, "recv heartbeat from " + msg.srcHost->GetHostName());
+                    //Print(ele->self_name, "recv heartbeat from " + msg.srcHost->GetHostName());
                     msg.srcHost->SendMessage(Message(ele->self_id, ele->view_number, msg.pp_num, "LIVE", "0"));
                 }
                 else
@@ -164,55 +161,55 @@ void RecvLoop(Election* ele) {
                     msg.srcHost->SendMessage(Message(ele->self_id, ele->view_number, msg.pp_num, "WRONGLEADER", "0"));
             } else if (msg.msg.find("LIVE") != string::npos) {
                 ele->last_live = ele->GetEpochSec();
-                Print(ele->self_name, " leader " + msg.srcHost->GetHostName() + " is live");
+                //Print(ele->self_name, " leader " + msg.srcHost->GetHostName() + " is live");
                 ele->host_group.HostIsLive(msg.cli_id);
+                //cout << ".";
             } else if (msg.msg.find("PREPARE") != string::npos) {
                 //if (msg.view_num != ele->view_number)
                 if (msg.view_num >= ele->view_number && msg.pp_num > ele->min_proposal) {
-                    cout << "recv from " << msg.srcHost->GetId() << " PREPARE new min_proposal " << msg.pp_num << ">"
-                        << to_string(ele->min_proposal) << " remote view " << msg.view_num << " local view " << ele->view_number << endl;
+                    //cout << "recv from " << msg.srcHost->GetId() << " PREPARE new min_proposal " << msg.pp_num << ">"
+                    //<< to_string(ele->min_proposal) << " remote view " << msg.view_num << " local view " <<
+                    //ele->view_number << endl;
                     ele->min_proposal = msg.pp_num;
                 } else {
-                    cout << "recv " << msg.srcHost->GetId() << " PREPARE small min_proposal " << msg.pp_num << "<=" << to_string(ele->min_proposal) << endl;
+                    //cout << "recv " << msg.srcHost->GetId() << " PREPARE small min_proposal " << msg.pp_num << "<=" <<
+                    //to_string(ele->min_proposal) << endl;
                 }
                 //msg.srcHost->SendMessage(to_string(ele->self_id) + " " + to_string(ele->accepted_proposal) + " PREPOK " + to_string(ele->leader_id) );
-                msg.srcHost->SendMessage(Message(ele->self_id, ele->view_number, ele->accepted_proposal, "PREPOK", to_string(ele->leader_id)));
-                cout << "reply PREPOK to " << msg.srcHost->GetId() << ": last acpt pp " << ele->accepted_proposal << " leader " << ele->leader_id << endl;
-            } else if ( msg.msg.find("PREPOK") != string::npos || msg.msg.find("ACPTOK") != string::npos) {
+                msg.srcHost->SendMessage(Message(ele->self_id, ele->view_number, ele->accepted_proposal, "PREPOK",
+                                                 to_string(ele->leader_id)));
+                //cout << "reply PREPOK to " << msg.srcHost->GetId() << ": last acpt pp " << ele->accepted_proposal <<
+                //" leader " << ele->leader_id << endl;
+            } else if (msg.msg.find("PREPOK") != string::npos || msg.msg.find("ACPTOK") != string::npos) {
                 ele->vote_message->push(msg);
-            } else if ( msg.msg.find("ACCEPT") != string::npos ) {
+            } else if (msg.msg.find("ACCEPT") != string::npos) {
                 if (msg.pp_num >= ele->min_proposal) {
-                    cout << "recv ACCEPT " << msg.srcHost->GetId() << " accept min_proposal " << msg.pp_num << " new leader " << msg.value<< endl;
+                    //cout << "recv ACCEPT " << msg.srcHost->GetId() << " accept min_proposal " << msg.pp_num <<
+                    //" new leader " << msg.value << endl;
                     ele->accepted_proposal = ele->min_proposal = msg.pp_num;
+                    Print(ele->self_name, "election success accept new leader " + msg.value);
                     ele->leader_id = stoi(msg.value);
                     if (ele->leader_id != ele->self_id) {
                         ele->host_group.FindHostById(ele->leader_id)->SetLeader();
                         ele->last_live = ele->GetEpochSec();
                     }
                 } else {
-                    cout << "recv ACCEPT " << msg.srcHost->GetId() << " reject min_proposal " << ele->min_proposal << ">" << msg.pp_num << endl;
+                    //cout << "recv ACCEPT " << msg.srcHost->GetId() << " reject min_proposal " << ele->min_proposal <<
+                    //">" << msg.pp_num << endl;
                 }
                 msg.srcHost->SendMessage(to_string(ele->self_id) + " " + to_string(ele->min_proposal) + " ACPTOK 0");
-                cout << "reply ACPTOK to " << msg.srcHost->GetHostName() << ": acpt pp " << ele->accepted_proposal << " leader " << ele->leader_id << endl;
+                //cout << "reply ACPTOK to " << msg.srcHost->GetHostName() << ": acpt pp " << ele->accepted_proposal <<
+                //" leader " << ele->leader_id << endl;
             } else if (msg.msg.find("WRONGLEADER") != string::npos) {
                 ele->leader_id = -1;
             } else {
                 cout << "recv wrong message " << msg.msg << endl;
-                ele->normal_msgs->push(msg);
+                //ele->normal_msgs->push(msg);
             }
-            //msg.srcHost->SendMessage(msg.msg + " ACK");
-
         }
     }
     cout << "recv end" << endl;
 }
-
-
-bool Election::Propose(std::string value) {
-
-    //host_group.Boardcast();
-}
-
 
 
 int Election::elect() {
@@ -224,7 +221,7 @@ int Election::elect() {
         my_proposal = NewProposalNum();
     }
 
-    Print(self_name, "start new election quorum " + to_string(mini_qourum) + " view " + to_string(prop_number));
+    Print(self_name, "start new election quorum " + to_string(mini_qourum) + " new pp " + to_string(my_proposal));
     host_group.Boardcast(Message(self_id, view_number, my_proposal, "PREPARE", "0"));
 
     int collect = 1, candidate_id = self_id;
@@ -239,11 +236,12 @@ int Election::elect() {
         Message vote;
 
         if (vote_message->wait_and_pop(vote, 1000) && vote.msg.find("PREPOK") != string::npos) {
-            cout << "PH_1 recv PREPOK from " << vote.srcHost->GetHostName() << " last accpp " << vote.pp_num << " last leader " << vote.value << endl;
-            cout << "                 remote view " << vote.view_num << " local view " << view_number << endl;
+            //cout << "PH_1 recv PREPOK from " << vote.srcHost->GetHostName() << " last accpp " << vote.pp_num <<
+            //" last leader " << vote.value << endl;
+            //cout << "                 remote view " << vote.view_num << " local view " << view_number << endl;
             // assume PREPOK meg
             if (vote.view_num == view_number && vote.pp_num > highest_pp && stoi(vote.value) != -1) {
-                cout << " update candidate from " << candidate_id << " to " << vote.value << endl;
+                //cout << " update candidate from " << candidate_id << " to " << vote.value << endl;
                 highest_pp = vote.pp_num;
                 candidate_id = stoi(vote.value);
             }
@@ -255,10 +253,10 @@ int Election::elect() {
             break;
         }
     }
-    cout << "phase 1 stopped " << collect << " votes" << endl;
+    //cout << "phase 1 stopped " << collect << " votes" << endl;
 
-    if (collect < mini_qourum){
-        Print(self_name, "election failed " + to_string(collect) + "!=" + to_string(host_group.GetGroupSize() + 1));
+    if (collect < mini_qourum || highest_pp > my_proposal) {
+        //Print(self_name, "election failed " + to_string(collect) + "!=" + to_string(host_group.GetGroupSize() + 1));
         return -1;
     }
     /*else {
@@ -274,9 +272,10 @@ int Election::elect() {
         Message vote;
 
         if (vote_message->wait_and_pop(vote, 1000) && vote.msg.find("ACPTOK") != string::npos) {
-            cout << "PH_2 ACPTOK from" << vote.srcHost->GetId() << " pp " << vote.pp_num << endl;
+            //cout << "PH_2 ACPTOK from" << vote.srcHost->GetId() << " pp " << vote.pp_num << endl;
             if (vote.pp_num > my_proposal) {
-                Print(self_name, "election fail, my proposal " + to_string(my_proposal) + " max " + to_string(vote.pp_num));
+                //Print(self_name,
+                //      "election fail, my proposal " + to_string(my_proposal) + " max " + to_string(vote.pp_num));
                 return -1;
             }
             ++collect;
@@ -289,7 +288,7 @@ int Election::elect() {
     }
 
     if (collect < mini_qourum) {
-        Print(self_name, "election fail no enough vote " + to_string(collect) + "<" + to_string(min_proposal));
+        //Print(self_name, "election fail no enough vote " + to_string(collect) + "<" + to_string(min_proposal));
         return -1;
     } else {
         accepted_proposal = my_proposal.load();
@@ -310,19 +309,20 @@ void Election::run() {
     while (true) {
 
         if (leader_id == -1 ||  // if there is no leader
-                ( leader_id != self_id && // or leader is not this node
-                          ( host_group.FindHostById(leader_id)->GetStatus() != HostStatus::kLeader // and the leader status is not correct
-                            || GetEpochSec() - last_live > 3
-                                  // or leader is not live for 3 seconds
-                          ) ) ){
-
+            (leader_id != self_id && // or leader is not this node
+             (host_group.FindHostById(leader_id)->GetStatus() !=
+              HostStatus::kLeader // and the leader status is not correct
+              || GetEpochSec() - last_live > 3
+                     // or leader is not live for 3 seconds
+             ))) {
+            /*
             if (leader_id == -1)
                 cout << "no leader" << endl;
-            else if ( leader_id != self_id && host_group.FindHostById(leader_id)->GetStatus() != HostStatus::kLeader)
+            else if (leader_id != self_id && host_group.FindHostById(leader_id)->GetStatus() != HostStatus::kLeader)
                 cout << leader_id << " is not leader " << host_group.FindHostById(leader_id)->GetStatusStr() << endl;
             else if (leader_id != self_id && GetEpochSec() - last_live > 3)
                 cout << "heart beat timeout" << endl;
-
+            */
             // start new election
             int candidate = elect();
             if (candidate != -1) {
@@ -336,9 +336,9 @@ void Election::run() {
                     host_group.FindHostById(leader_id)->SetLeader();
                     last_live = GetEpochSec();
                 }
-            // election failed, random wait
+                // election failed, random wait
             } else {
-                cout << "wait for 1 sec" << endl;
+                //cout << "wait for 1 sec" << endl;
                 this_thread::sleep_for(chrono::seconds(1));
             }
 
@@ -350,15 +350,14 @@ void Election::run() {
                 this_thread::sleep_for(chrono::seconds(1));
                 // leader timeout
                 if (GetEpochSec() - last_live > 3) {
-                    cout << "leader timeout" << endl;
+                    Print(self_name, "leader timeout");
+                    //cout << "leader timeout" << endl;
                     NextView(view_number + 1);
                 }
             }
         }
 
     }
-
-
     running = false;
     recv_thread.join();
 }

@@ -55,7 +55,7 @@ void Host::InitNet()  {
 
     addr = *(struct sockaddr_in *)(p->ai_addr);
     addrlen = p->ai_addrlen;
-    cout << "initialized net for host " << hostname << " addr " << addr.sin_addr.s_addr << endl;
+    //cout << "initialized net for host " << hostname << " addr " << addr.sin_addr.s_addr << endl;
 
     freeaddrinfo(servinfo);
 }
