@@ -1,6 +1,7 @@
+A Paxos like leader election implementation
+
 1. Compile
     This project uses cmake to generate makefile. The compilation is tested under XINU computers.
-    Enter the source code folder.
     To generate a makefile:
         cmake .
     To make the project:
@@ -14,9 +15,7 @@
         1 xinu01.cs.purdue.edu
         2 xinu02.cs.purdue.edu
         3 xinu03.cs.purdue.edu
-        4 xinu04.cs.purdue.edu
-        5 xinu05.cs.purdue.edu
-
+        
 3. Leader election without failures
     Run leader program with 0 crash failure tolerance. Start leader at every host in the hosts.txt file:
         ./leader -p 12345 -h hosts.txt -f 0
